@@ -989,11 +989,11 @@ dependencies = [
  "peniko",
  "proptest",
  "rand",
- "serde",
  "serde_json",
  "sorte-anim",
  "sorte-core",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]

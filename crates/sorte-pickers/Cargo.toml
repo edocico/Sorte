@@ -14,9 +14,10 @@ kurbo.workspace = true
 peniko.workspace = true
 parley.workspace = true
 rand.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+# Seeded entry ids in the contract suite's lists.
+uuid.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
