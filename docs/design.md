@@ -81,7 +81,7 @@ Il modello centrale è "una lista, più modi di estrarre": le voci appartengono 
 | F7 | Stop manuale che anticipa l'arresto senza cambiare l'esito già deciso | v1 |
 | F8 | Modalità presentazione: schermo intero, pannelli nascosti, sfondo a tinta unita per il chroma key di chi fa streaming | v1 |
 | F9 | Import ed export: CSV, testo nel formato di PickerWheel, file `.sorte` con immagini incluse, immagine PNG della ruota | v1 |
-| F10 | Interfaccia in italiano e inglese | v1 |
+| F10 | Interfaccia in italiano e inglese: testi sorgente in inglese con la traduzione italiana, nella lingua del sistema; la scelta della lingua in Preferenze arriva nella v1 (deciso il 5 novembre 2026) | MVP (scelta: v1) |
 | F11 | Gara di cavalli da 2 a 12 corsie con regola "vince chi arriva primo" o "vince chi arriva ultimo" | M3 |
 | F12 | Modalità verificabile: il seme viene dal generatore del sistema operativo e l'estrazione da ChaCha20 con quel seme; prima dello spin si mostra l'impronta del seme, dopo si rivela il seme per ricalcolare l'esito | Dopo M4 |
 
@@ -110,13 +110,15 @@ La finestra principale divide lo spazio tra la scena, a sinistra, e un pannello 
 
 | Schermata | Contenuto |
 | --- | --- |
-| Finestra principale | Barra in alto con lista attiva, scelta del picker, Nuova, Importa, Esporta, Presentazione e un menu con Preferenze e Informazioni (su macOS il menu dell'app); scena con il picker; pannello con le schede Voci, Risultati, Aspetto |
+| Finestra principale | Barra in alto con lista attiva, scelta del picker, Nuova, Importa, Esporta, Presentazione e un menu con Preferenze e Informazioni, nella finestra su tutti i sistemi; scena con il picker; pannello con le schede Voci, Risultati, Aspetto |
 | Risultato | Sovrapposizione animata sulla scena: titolo del risultato, voce estratta (testo o immagine) o classifica per i picker a classifica, le quattro azioni |
 | Liste | Elenco ricercabile delle liste salvate, con duplica, elimina e ordine per uso recente |
 | Aspetto e animazione | Impostazioni della lista e del picker: colori, suoni, velocità, durata, confetti, ruota misteriosa |
 | Preferenze | Tema chiaro o scuro, lingua, volume generale, Riduci animazioni, cartella dei dati |
 | Presentazione | Solo la scena a schermo intero, con sfondo a tinta unita opzionale |
 | Informazioni | Versione, licenza GPLv3, licenze di terze parti e il widget AboutSlint, non obbligatorio con la GPLv3 |
+
+Su macOS Slint 1.18 aggiunge sempre un menu dell'app fisso (Informazioni standard, Servizi, Nascondi, Esci), e con il `BackendSelector` che serve al ponte wgpu non lo si può né togliere né estendere. Per questo Preferenze e Informazioni stanno nel menu della finestra anche su macOS, e le Preferenze si aprono anche con Cmd+, (deciso il 5 novembre 2026).
 
 **Flusso principale**
 
@@ -136,6 +138,7 @@ La finestra principale divide lo spazio tra la scena, a sinistra, e un pannello 
 | Ctrl+N | Nuova lista |
 | Ctrl+F | Cerca tra le voci |
 | Ctrl+1 … Ctrl+9 | Passa al picker in quella posizione del registro (1 la ruota, 2 la gara) |
+| Ctrl+, | Preferenze |
 | F11 | Presentazione |
 
 ## Stack tecnologico e decisione
@@ -148,7 +151,7 @@ Decisione: interfaccia in Slint, scena animata disegnata da Vello in una texture
 | Interfaccia | [Slint](https://docs.slint.dev/latest/docs/rust/slint/wgpu_30/) 1.18 | UI desktop dichiarativa con anteprima dal vivo; dalla [1.17](https://github.com/slint-ui/slint/discussions/12124) drag and drop, icona di sistema, tooltip e ombre più ricche |
 | Scena animata | [Vello](https://docs.rs/crate/vello/latest) 0.11 su wgpu 30 | Grafica vettoriale ridisegnata sulla GPU a ogni frame: bordi e testo nitidi a qualunque angolo |
 | Ponte UI e scena | Feature `unstable-wgpu-30` di Slint | Slint e Vello condividono device e coda wgpu; la texture della scena entra nella UI con `Image::try_from` |
-| Testo nella scena | Parley, font incorporati nell'app | Misura, adattamento e troncamento delle etichette; i glifi li disegna Vello |
+| Testo nella scena | Parley, con i font Noto incorporati nell'app: Sans, Mono, Color Emoji e le scritture araba, ebraica, devanagari, bengalese e thai (SIL OFL 1.1, circa 7 MB); cinese, giapponese e coreano dai font di sistema (deciso il 5 novembre 2026) | Misura, adattamento e troncamento delle etichette; i glifi li disegna Vello. Etichette uguali sui tre sistemi e immagini di riferimento ripetibili |
 | Audio | [Kira](https://docs.rs/crate/kira/latest/source/src/lib.rs) 0.12 | Clock per programmare i suoni in anticipo, mixer ed effetti |
 | Casualità | `rand` 0.10: generatore del sistema operativo (SysRng) e Uniform per l'estrazione | Estrazione crittograficamente sicura e senza bias |
 | Salvataggio | serde e JSON, scritture atomiche | File leggibili, esportabili e facili da migrare |
@@ -334,7 +337,7 @@ Angoli in senso orario sullo schermo, lancetta all'angolo p. Lo spicchio i inizi
 \theta(\tau) = \theta_0 + \Delta \, E\!\left(\frac{\tau}{T}\right), \qquad E(x) = 1 - (1 - x)^n
 ```
 
-4. La velocità iniziale vale ω₀ = n · Δ / T. La durata (1–30 s) fissa T e il livello di velocità (1–10) sceglie ω₀ da una tabella; da qui si ricavano K e n, con n tra 2,5 e 6. Se nessun K intero dà n in quell'intervallo (succede quando ω₀ · T è sotto circa 27 rad), si ritocca ω₀ verso il valore fattibile più vicino.
+4. La velocità iniziale vale ω₀ = n · Δ / T. La durata (1–30 s) fissa T e il livello di velocità (1–10) sceglie ω₀ da una tabella; da qui si ricavano K e n, con n tra 2,5 e 6. Se nessun K intero dà n in quell'intervallo (succede quando ω₀ · T è sotto circa 27 rad), si ritocca ω₀ verso il valore fattibile più vicino. Per ora la tabella è la curva dello spike, ω₀ = 2π · 10^((L − 1)/9) rad/s, cioè da 1 a 10 giri al secondo, con livello 5 e 8 s di default; si rifinisce provando l'app (deciso il 5 novembre 2026).
 5. I tick si calcolano in forma chiusa: se la lancetta incontra un bordo dopo una rotazione b ≤ Δ, il tick cade a
 
 ```latex
@@ -423,6 +426,7 @@ pub struct DrawRecord {
 **Dove e come si salva**
 
 - Cartella dati per utente ricavata con il crate `directories`: `lists/<uuid>.json`, `assets/<sha256>.<ext>`, `settings.json`.
+- Identificativo provvisorio dell'app: `io.github.edocico.Sorte`, che cambia con il nome definitivo. Le cartelle vengono da `ProjectDirs::from("io.github.edocico", "", "Sorte")`: `~/.local/share/sorte` su Linux, `%APPDATA%\Sorte\data` su Windows, `~/Library/Application Support/io.github.edocico.Sorte` su macOS. Lo stesso identificativo vale per l'app\_id di Wayland, il file .desktop, il bundle macOS e Flathub.
 - Se l'utente sceglie un'altra cartella dati, la scelta si salva in un piccolo file nella cartella di configurazione del sistema (`config_dir` di `directories`), fuori dalla cartella dati.
 - Autosalvataggio 500 ms dopo l'ultima modifica, su un thread di I/O separato dall'interfaccia.
 - Scrittura atomica: file temporaneo, sincronizzazione su disco, rinomina.
@@ -479,8 +483,8 @@ Si procede da M0 a M4, senza date: ogni fase si chiude solo quando il suo cancel
 | Fase | Contenuto | Cancello |
 | --- | --- | --- |
 | M0 · Spike tecnico | Finestra Slint con scena Vello su wgpu 30: ruota che gira con motion blur e tick audio programmati con Kira. Frame pacing su Windows, macOS e Linux (Wayland e X11); ripiego Vello CPU; benchmark a 1.000 voci; emoji. | Su ogni sistema, con `--gate 6` a 144 Hz o più: al massimo 1 vsync perso al minuto in più della base della piattaforma, nessuno stallo, CPU e GPU sotto il 25% e il 75% del periodo al 99° percentile; testo nitido, stessa resa sui tre sistemi |
-| M1 · MVP della ruota | Editor voci con annulla e ripeti, estrazione equa, sovrapposizione risultato con le quattro azioni. Liste multiple con autosalvataggio, cronologia, suoni predefiniti, scorciatoie da tastiera. | Uso quotidiano senza bug bloccanti, test statistici e di proprietà verdi |
-| M2 · Versione 1 | Pesi, colori, etichette, immagini, ruota misteriosa, punteggi, temi, confetti, schermo intero. Import ed export, modalità presentazione, stop manuale, italiano e inglese, classifica nel core. | Parità con le funzioni offline di PickerWheel previste per MVP e v1 |
+| M1 · MVP della ruota | Editor voci con annulla e ripeti, estrazione equa, sovrapposizione risultato con le quattro azioni. Liste multiple con autosalvataggio, cronologia, suoni predefiniti, scorciatoie da tastiera. Testi in inglese e italiano, nella lingua del sistema. | Uso quotidiano senza bug bloccanti, test statistici e di proprietà verdi |
+| M2 · Versione 1 | Pesi, colori, etichette, immagini, ruota misteriosa, punteggi, temi, confetti, schermo intero. Import ed export, modalità presentazione, stop manuale, scelta della lingua, classifica nel core. | Parità con le funzioni offline di PickerWheel previste per MVP e v1 |
 | M3 · Gara di cavalli | Secondo picker sullo stesso contratto: classifica, curve monotone, telecamera, fotofinish. Regole vince il primo e vince l'ultimo, da 2 a 12 corsie. | L'unica modifica fuori dal crate della gara è registrarla; test di contratto verdi |
 | M4 · Rilascio 1.0 | Installer firmati per Windows e macOS, AppImage e .deb, pubblicazione su Flathub. Finestra Informazioni con licenza GPLv3, licenze di terze parti e AboutSlint. | — |
 

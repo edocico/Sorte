@@ -78,7 +78,7 @@ Time and choreography (§ Modello a plugin dei picker, § Qualità delle animazi
 - t advances in whole monitor periods by counting vsyncs on a grid fitted to the frame start times, not by measuring frame intervals; under VRR/ProMotion use the filtered timestamp. Fit the period online (the nominal rate was 0.19 % off on the M0 machine), accumulate t (never vsync × period, so a refined period can't make it jump), and re-anchor at the start of each animation: the first frames after idleness come in a burst while the swapchain refills. No API gives vsync counts or present times; Wayland's `wp_presentation` is the only ground truth, for measuring.
 - Every event (start, ticks, arrival) is known up front through `events()` (wheel ticks in closed form, per segment). Audio schedules them on Kira's clock 200 ms ahead, offset by a per-device latency calibration (Kira 0.12 has no latency API), so a tick sounds within 10 ms of its slice edge passing the pointer. Never trigger a sound because a frame noticed a slice edge. A manual stop cancels the ticks already queued after the stop.
 - The wheel lands at φ, inside the chosen slice and 15–85% of the way across it (§ Spin della ruota calls the landing angle φ and time τ); the settle phase (the pointer swinging on a damped spring) can't reach another slice; `replan_stop` replans from the current state to the same φ at matching velocity.
-- Duration fixes T; the speed level (1–10) picks ω₀ from a table, nudged to the nearest feasible value when no integer K gives an easing exponent n in [2.5, 6]. A fling's T is clamped to 1–30 s; the optional wind-up and acceleration are short segments inside T.
+- Duration fixes T; the speed level (1–10) picks ω₀ from a table (for now the spike's curve, ω₀ = 2π·10^((L−1)/9) rad/s, level 5 and 8 s by default, to be tuned by feel), nudged to the nearest feasible value when no integer K gives an easing exponent n in [2.5, 6]. A fling's T is clamped to 1–30 s; the optional wind-up and acceleration are short segments inside T.
 - Reduce motion reaches pickers through `SpinRequest`: choreographies under 1 s, fades instead of large movement (the wheel doesn't spin, it fades to the result).
 
 Pickers stay pluggable (§ Modello a plugin dei picker)
@@ -87,26 +87,26 @@ Pickers stay pluggable (§ Modello a plugin dei picker)
 - Ctrl+1…9 follow the registry's order. Pickers that don't accept the list's entry count stay listed but disabled, with the reason. The result overlay shows a ranking for ranking pickers.
 
 Persistence (§ Modello dati e salvataggio)
-- Per-user data dir from the `directories` crate: one self-contained JSON per list (`lists/<uuid>.json`), images and custom sounds as `assets/<sha256>.<ext>`, plus `settings.json`. A user-chosen data dir is recorded in a small file in the OS config dir, outside the data dir.
+- Per-user data dir from the `directories` crate, as `ProjectDirs::from("io.github.edocico", "", "Sorte")` (the app id `io.github.edocico.Sorte` is provisional, like the name): one self-contained JSON per list (`lists/<uuid>.json`), images and custom sounds as `assets/<sha256>.<ext>`, plus `settings.json`. A user-chosen data dir is recorded in a small file in the OS config dir, outside the data dir.
 - Every write is atomic (temp file, fsync, rename); autosave fires 500 ms after the last edit.
 - `ListDoc.schema` versions the format: documents migrate in memory to the latest version on open, with one test per step.
 - `DrawRecord` copies the entry text so history survives deletion; each list's history keeps its last 1,000 draws. Closing the result with Esc records `Done`.
 
 Dependencies, privacy, licensing
-- No network connections or telemetry; review new dependencies for this. No update check either (an optional updater is only to be evaluated after 1.0). One executable, no external runtime; scene fonts embedded.
+- No network connections or telemetry; review new dependencies for this. No update check either (an optional updater is only to be evaluated after 1.0). One executable, no external runtime; scene fonts embedded: Noto Sans, Sans Mono, Color Emoji and the Arabic, Hebrew, Devanagari, Bengali and Thai fallbacks (SIL OFL 1.1, about 7 MB); CJK comes from the system fonts.
 - Upgrade Slint, Vello and wgpu as one unit: Slint's wgpu bridge (feature `unstable-wgpu-30`) may change in any minor release, and Vello 0.11 requires wgpu 30. Pin Slint with a tilde requirement (now `~1.18`; a bare `1.18` accepts 1.19), and update every version this file names when you bump. Upgrade Vello, which is alpha, only when the reference-image suite passes.
 - Vello needs compute shaders: at startup, fall back to vello_cpu behind `Frame` (one backend per renderer). Motion blur is our own wgpu pass, requested through `Frame` with the centre, the radius of the moving content and the angular velocity; it is skipped on vello_cpu.
 - Licence: every crate declares `license = "GPL-3.0-only"`, and cargo-deny allows only GPLv3-compatible licences (it takes Slint under `GPL-3.0-only`). AboutSlint stays in the About window as a courtesy; GPLv3 doesn't require it. Reuse none of PickerWheel's name, logo, texts or graphics.
 
 UI (§ Esperienza utente)
-- Every change to entries and settings goes through undo/redo. Everything works from the keyboard: the result overlay with Tab, Enter and Esc; Space draws only outside text fields; Cmd replaces Ctrl on macOS. The top bar's menu holds Preferenze and Informazioni (the app menu on macOS).
-- v1 ships Italian and English (F10), so UI text goes through Slint's `@tr()` from M1 on.
+- Every change to entries and settings goes through undo/redo. Everything works from the keyboard: the result overlay with Tab, Enter and Esc; Space draws only outside text fields; Cmd replaces Ctrl on macOS (Slint maps it: `@keys(Control + Z)` and `modifiers.control` mean Cmd there). The window's own menu holds Preferenze and Informazioni on every OS, because on macOS Slint adds a fixed app menu that `BackendSelector` can't extend; Ctrl+, opens Preferenze.
+- UI text goes through Slint's `@tr()` with English source strings; M1 already ships the Italian translation, picked from the OS locale (requirement F10, not a key; the language switch in Preferenze is v1).
 - Colours, radii, motion durations and easing curves are design tokens; every Slint animation takes its duration and curve from them. The style starts from Slint's Fluent theme.
 
 ## Tests (§ Testing e verifica)
 
 - Statistical (gates M1): a chi-square test of each entry's frequency against weight ÷ W over 10⁶ draws, with a fixed seed and fixed thresholds.
-- Property (`proptest`, gates M1): with random lists, weights, start angles and durations, the wheel stops inside the drawn slice, away from its edges; in the race the arrival order is the ranking and the curves are monotone.
+- Property (`proptest`, gates M1): with random lists, weights, start angles and durations, the wheel stops inside the drawn slice, away from its edges; from M3, in the race the arrival order is the ranking and the curves are monotone.
 - Contract: each picker crate runs the shared suite from `sorte-pickers`: for random outcomes its choreography ends on the outcome, within its declared duration, with events in order.
 - Reference images: the scene rendered offscreen at fixed instants and compared within a tolerance; in CI on a software GPU (e.g. Mesa lavapipe) or vello_cpu.
 
@@ -128,4 +128,4 @@ Checked on 2026-11-05 against the sources of slint 1.18.1, vello 0.11.0, vello_c
 
 Don't settle these alone: ask the user, record the decision in `docs/design.md` (in Italian, like the rest of it), tell them so the living doc follows, and drop the line here.
 - Product questions (§ Rischi e domande aperte): final name; distribution beyond direct download and Flathub; user-made WebAssembly pickers (a comment on the living doc still waits for the user's answer); the race's art style; the reference machine for the smoothness target, and manual tests on a 240 Hz monitor and an Intel Mac.
-- From M0, for the user: the M0 gate measured on Windows, macOS, X11 and KDE; the macOS frame loop (notifier or hook, measured); the speed table for levels 1–10 (`spike/src/spin.rs` has a placeholder); bundling the Noto fonts (SIL OFL 1.1, 7 MB without CJK) into the binary.
+- From M0, for the user: the M0 gate measured on Windows, macOS, X11 and KDE; the macOS frame loop (notifier or hook, measured).
