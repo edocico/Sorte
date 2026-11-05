@@ -1,0 +1,160 @@
+// M0 spike window: the scene on the left, a few controls on the right.
+import { Button, Slider, SpinBox, ComboBox, CheckBox, VerticalBox } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "Sorte · spike M0";
+    preferred-width: 1280px;
+    preferred-height: 820px;
+    min-width: 720px;
+    min-height: 480px;
+    background: #f5f2ec;
+
+    // The scene texture, rendered by the stage before each frame.
+    in property <image> scene;
+    // Physical size of the scene area: the texture is rendered at exactly this size.
+    // round(): float-to-int conversions truncate in Slint.
+    out property <int> scene-px-width: round(scene-image.width / 1phx);
+    out property <int> scene-px-height: round(scene-image.height / 1phx);
+
+    in-out property <int> entries-index: 1;
+    in-out property <int> label-set: 0;
+    in-out property <float> speed: 5;
+    in-out property <float> duration: 8;
+    in-out property <int> audio-offset-ms: 0;
+    in-out property <bool> overlay: false;
+    in-out property <bool> blur: true;
+    in property <string> result;
+    in property <string> renderer;
+    in property <bool> spinning;
+
+    callback spin();
+    callback bench();
+    // The list changed (entries or label set): the wheel is rebuilt.
+    callback list-changed();
+    // A setting that only changes the picture: redraw once.
+    callback redraw();
+
+    forward-focus: keys;
+    keys := FocusScope {
+        // F12 works even while a text field has focus.
+        capture-key-pressed(event) => {
+            if (event.text == Key.F12) {
+                root.overlay = !root.overlay;
+                root.redraw();
+                return accept;
+            }
+            return reject;
+        }
+        // Space reaches here only when no text field took it.
+        key-pressed(event) => {
+            if ((event.text == Key.Space && !event.repeat) || (event.text == Key.Return && event.modifiers.control)) {
+                root.spin();
+                return accept;
+            }
+            return reject;
+        }
+
+        HorizontalLayout {
+            Rectangle {
+                horizontal-stretch: 1;
+                // Explicit geometry, `fill` and `pixelated`: one texel per physical pixel.
+                scene-image := Image {
+                    x: 0;
+                    y: 0;
+                    width: parent.width;
+                    height: parent.height;
+                    source: root.scene;
+                    image-fit: fill;
+                    image-rendering: pixelated;
+                }
+            }
+
+            Rectangle {
+                width: 300px;
+                background: #ffffff;
+                VerticalBox {
+                    Text {
+                        text: "Sorte · spike M0";
+                        font-size: 20px;
+                        font-weight: 600;
+                    }
+
+                    Text { text: "Voci"; }
+                    ComboBox {
+                        model: ["2", "12", "60", "200", "1000"];
+                        current-index <=> root.entries-index;
+                        selected => { root.list-changed(); }
+                    }
+
+                    Text { text: "Etichette"; }
+                    ComboBox {
+                        model: ["Nomi", "Scritture ed emoji", "Numerate"];
+                        current-index <=> root.label-set;
+                        selected => { root.list-changed(); }
+                    }
+
+                    Text { text: "Velocità: \{Math.round(root.speed)}"; }
+                    Slider {
+                        minimum: 1;
+                        maximum: 10;
+                        step: 1;
+                        value <=> root.speed;
+                    }
+
+                    Text { text: "Durata: \{Math.round(root.duration)} s"; }
+                    Slider {
+                        minimum: 1;
+                        maximum: 30;
+                        step: 1;
+                        value <=> root.duration;
+                    }
+
+                    Text { text: "Anticipo audio (ms)"; }
+                    SpinBox {
+                        minimum: -150;
+                        maximum: 150;
+                        value <=> root.audio-offset-ms;
+                    }
+
+                    CheckBox {
+                        text: "Motion blur";
+                        checked <=> root.blur;
+                        toggled => { root.redraw(); }
+                    }
+                    CheckBox {
+                        text: "Overlay di debug (F12)";
+                        checked <=> root.overlay;
+                        toggled => { root.redraw(); }
+                    }
+
+                    Button {
+                        text: root.spinning ? "Sta girando…" : "Gira (Spazio)";
+                        primary: true;
+                        enabled: !root.spinning;
+                        clicked => { root.spin(); }
+                    }
+                    Button {
+                        text: "Misura: spin di 10 s";
+                        enabled: !root.spinning;
+                        clicked => { root.bench(); }
+                    }
+
+                    Text {
+                        text: root.result;
+                        font-size: 18px;
+                        wrap: word-wrap;
+                    }
+
+                    Rectangle { vertical-stretch: 1; }
+
+                    Text {
+                        text: root.renderer;
+                        font-size: 11px;
+                        color: #666666;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

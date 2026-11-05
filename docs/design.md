@@ -91,7 +91,7 @@ La fluidità è il requisito che decide l'architettura: ogni scelta successiva s
 
 | Area | Obiettivo | Come si verifica |
 | --- | --- | --- |
-| Fluidità | Zero frame persi in uno spin di 10 s a 144 Hz sulla macchina di riferimento | Contatore di frame persi nell'overlay di debug |
+| Fluidità | A 144 Hz o più, al massimo 1 vsync perso al minuto in più della base della piattaforma (una finestra Slint vuota mossa dallo stesso ciclo di frame), nessuno stallo, e il nostro lavoro sotto il 25% (CPU) e il 75% (GPU) del periodo di refresh al 99° percentile | Modalità `--gate` dello spike: 6 coppie alternate di spin da 10 s, base e scena; vsync persi da `wp_presentation` su Wayland, dal contatore del clock altrove |
 | Qualità visiva | Bordi antialiasati, testo nitido a riposo, motion blur oltre una soglia di velocità | Immagini di riferimento e revisione visiva |
 | Sincronia audio | Tick entro 10 ms dal passaggio dello spicchio sotto la lancetta | Registrazione audio e video del test |
 | Scala | Fino a 1.000 voci senza cali di frame; etichette nascoste quando lo spicchio è troppo stretto | Benchmark nello spike |
@@ -203,11 +203,11 @@ Un'estrazione segue i numeri: il controller chiede l'esito al core, il picker lo
 
 **Ciclo di frame**
 
-1. Slint invoca il notificatore di rendering prima di disegnare la finestra.
-2. Il clock calcola t, quantizzato al vsync. Da dove leggere i vsync va trovato nello spike: il notificatore di Slint non passa timestamp né frequenza del monitor.
+1. winit consegna l'evento `RedrawRequested` prima che Slint disegni la finestra (feature `unstable-winit-030` di Slint). Il notificatore di rendering di Slint non si usa: con femtovg-wgpu fa ricompilare le pipeline a ogni frame (nello spike: 9–11% di vsync persi e il 103% di un core, contro l'1% e il 30%). Su macOS Slint disegna da un CADisplayLink che salta quell'evento, quindi lì si usa il notificatore finché le misure non indicano altro.
+2. Il clock calcola t, quantizzato al vsync. Nessuna API (Slint, winit, wgpu) fornisce conteggi di vsync o tempi di presentazione: il clock adatta una griglia di refresh agli istanti d'inizio frame, con il periodo stimato in continuo perché quello dichiarato dal monitor può sbagliare (165,001 Hz dichiarati, 164,70 Hz reali sulla macchina di M0).
 3. La coreografia attiva disegna lo stato al tempo t, attraverso Frame, in una scena Vello.
 4. Vello la rende nella texture, sullo stesso device wgpu di Slint, che la compone con il resto dell'interfaccia.
-5. Finché c'è un'animazione attiva, una coreografia o la rotazione d'attesa, si richiede il frame successivo; altrimenti l'app torna inattiva.
+5. Finché c'è un'animazione attiva, una coreografia o la rotazione d'attesa, si richiede il frame successivo (con `request_redraw` di winit: quello di Slint, chiamato a quel punto, andrebbe perso); altrimenti l'app torna inattiva.
 
 **Thread**
 
@@ -280,6 +280,8 @@ pub struct Outcome {
     pub ranking: Option<Vec<EntryId>>,   // solo per i picker a classifica
 }
 ```
+
+**Forma di Frame, verificata nello spike M0.** Frame raccoglie due liste di comandi di disegno: lo strato in movimento (la ruota), che può ricevere il motion blur, e lo strato fisso sopra (lancetta, mozzo, overlay). I comandi sono riempimenti, tratti, sequenze di glifi già impaginate e immagini preparate una volta (Picture) disegnate con una trasformazione: sorte-stage codifica una Picture una sola volta e la riusa a ogni frame, cosa necessaria perché Vello ricalcola sulla CPU le emoji a colori a ogni disegno. Il motion blur si chiede con centro, raggio e velocità angolare.
 
 **Ciclo di vita di un'estrazione**
 
@@ -365,7 +367,7 @@ Qui "perfetta" significa tre cose misurabili: nessun frame perso, nessun salto d
 
 | Tecnica | Cosa risolve | Come |
 | --- | --- | --- |
-| Tempo quantizzato al vsync | Micro-scatti dovuti al rumore dei timestamp | Il tempo animato avanza a multipli del periodo del monitor, contando i vsync trascorsi invece di misurare intervalli rumorosi. Con refresh variabile (VRR, ProMotion) si usa il timestamp filtrato |
+| Tempo quantizzato al vsync | Micro-scatti dovuti al rumore dei timestamp | Il tempo animato avanza a multipli del periodo del monitor, contando i vsync trascorsi su una griglia adattata agli istanti d'inizio frame, invece di misurare intervalli rumorosi. Il periodo si stima in continuo; i primi frame dopo una pausa arrivano a raffica mentre la swapchain si riempie, e contano un vsync ciascuno. Con refresh variabile (VRR, ProMotion) si usa il timestamp filtrato |
 | Stato come funzione di t | Derive ed errori che si accumulano | La coreografia calcola tutto da t: due frame allo stesso istante sono identici, a qualunque frequenza |
 | Rendering solo quando serve | Consumi a riposo | Si chiede il frame successivo solo mentre c'è un'animazione attiva, una coreografia o la rotazione d'attesa; da ferma l'app non disegna |
 | Motion blur rotazionale | Effetto "ruota che gira al contrario" e scie stroboscopiche | Quando la ruota avanza per frame più di un terzo dello spicchio più stretto, si disegna in una texture a parte e un passaggio wgpu la sfuma lungo l'arco percorso in mezzo frame. La coreografia lo chiede dal Frame passando centro e velocità angolare; con vello\_cpu si salta |
@@ -476,13 +478,13 @@ Si procede da M0 a M4, senza date: ogni fase si chiude solo quando il suo cancel
 
 | Fase | Contenuto | Cancello |
 | --- | --- | --- |
-| M0 · Spike tecnico | Finestra Slint con scena Vello su wgpu 30: ruota che gira con motion blur e tick audio programmati con Kira. Frame pacing su Windows, macOS e Linux (Wayland e X11); ripiego Vello CPU; benchmark a 1.000 voci; emoji. | Zero frame persi in 10 s a 144 Hz, testo nitido, stessa resa sui tre sistemi |
+| M0 · Spike tecnico | Finestra Slint con scena Vello su wgpu 30: ruota che gira con motion blur e tick audio programmati con Kira. Frame pacing su Windows, macOS e Linux (Wayland e X11); ripiego Vello CPU; benchmark a 1.000 voci; emoji. | Su ogni sistema, con `--gate 6` a 144 Hz o più: al massimo 1 vsync perso al minuto in più della base della piattaforma, nessuno stallo, CPU e GPU sotto il 25% e il 75% del periodo al 99° percentile; testo nitido, stessa resa sui tre sistemi |
 | M1 · MVP della ruota | Editor voci con annulla e ripeti, estrazione equa, sovrapposizione risultato con le quattro azioni. Liste multiple con autosalvataggio, cronologia, suoni predefiniti, scorciatoie da tastiera. | Uso quotidiano senza bug bloccanti, test statistici e di proprietà verdi |
 | M2 · Versione 1 | Pesi, colori, etichette, immagini, ruota misteriosa, punteggi, temi, confetti, schermo intero. Import ed export, modalità presentazione, stop manuale, italiano e inglese, classifica nel core. | Parità con le funzioni offline di PickerWheel previste per MVP e v1 |
 | M3 · Gara di cavalli | Secondo picker sullo stesso contratto: classifica, curve monotone, telecamera, fotofinish. Regole vince il primo e vince l'ultimo, da 2 a 12 corsie. | L'unica modifica fuori dal crate della gara è registrarla; test di contratto verdi |
 | M4 · Rilascio 1.0 | Installer firmati per Windows e macOS, AppImage e .deb, pubblicazione su Flathub. Finestra Informazioni con licenza GPLv3, licenze di terze parti e AboutSlint. | — |
 
-Lo spike viene prima di tutto perché verifica le due scommesse del design, il ponte tra Slint e wgpu e il frame pacing. Se non supera il cancello, si passa al ripiego con la scena fatta di elementi Slint prima di scrivere codice di prodotto, e il contratto di disegno (Frame) si riprogetta prima di M1. Lo spike è un binario usa e getta in spike/, fuori dai crate del prodotto: se passa, nei crate veri si porta solo ciò che serve. Comprende anche il benchmark a 1.000 voci e la prova di emoji e scritture complesse.
+Lo spike viene prima di tutto perché verifica le due scommesse del design, il ponte tra Slint e wgpu e il frame pacing. Il cancello di M0 è relativo alla base della piattaforma (deciso il 5 novembre 2026): sulla macchina di M0 anche una finestra Slint vuota, mossa dallo stesso ciclo di frame, perde circa un vsync ogni 10 s, quindi uno zero assoluto non dipende dall'app. Prima misura, Radeon 780M a 165 Hz: base 7,0 vsync persi al minuto, scena 8,0 (p = 0,50), CPU al 19% e GPU al 68% del periodo. Se non supera il cancello, si passa al ripiego con la scena fatta di elementi Slint prima di scrivere codice di prodotto, e il contratto di disegno (Frame) si riprogetta prima di M1. Lo spike è un binario usa e getta in spike/, fuori dai crate del prodotto: se passa, nei crate veri si porta solo ciò che serve. Comprende anche il benchmark a 1.000 voci e la prova di emoji e scritture complesse.
 
 ## Rischi e domande aperte
 
@@ -494,6 +496,7 @@ Il rischio maggiore è il ponte tra Slint e wgpu: per questo lo spike M0 lo affr
 | GPU senza compute shader (macchine datate, alcune macchine virtuali) | Vello non parte; con require\_wgpu\_30 Slint fallisce già all'avvio se non trova un adapter GPU (GL è escluso per default) | Rilevamento all'avvio e renderer Vello CPU dietro Frame: si gestisce l'errore di select() e si passa a vello\_cpu; in CI con un adapter software serve SLINT\_WGPU\_CPU=1 |
 | Vello in fase alpha | Artefatti o regressioni tra versioni | Immagini di riferimento in CI; si aggiorna solo se la suite passa |
 | Frame pacing diverso tra Wayland, X11, Windows e macOS | Scatti su un solo sistema | Misure su tutti i sistemi nello spike, tempo quantizzato al vsync, overlay di debug |
+| Notificatore di rendering di Slint con femtovg-wgpu | Pipeline ricompilate a ogni frame: CPU triplicata e frame persi | Ciclo di frame su `RedrawRequested` di winit; segnalazione a Slint; su macOS (CADisplayLink) da misurare |
 | Latenza audio variabile tra dispositivi | Tick fuori sincrono | Programmazione anticipata sul clock di Kira e calibrazione per dispositivo |
 | Emoji a colori e scritture complesse nelle etichette | Testo mancante o sbagliato nella scena | Verifica nello spike con Parley e Vello; ripiego: emoji trattate come immagini |
 | Grafica della gara di cavalli | Servono illustrazioni e cicli di animazione dedicati | Stile vettoriale disegnato in codice, oppure animazioni Lottie riprodotte con velato, l'integrazione Lottie di Vello (da valutare: velato 0.12 è ancora su vello 0.10) |

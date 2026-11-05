@@ -1,0 +1,3 @@
+# The spike's style: long lines, compact small items.
+max_width = 120
+use_small_heuristics = "Max"

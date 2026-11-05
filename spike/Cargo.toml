@@ -1,0 +1,43 @@
+[package]
+name = "sorte-spike"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.92"
+license = "GPL-3.0-only"
+publish = false
+description = "M0 spike: a Vello scene in a Slint window through the wgpu bridge. Throwaway code."
+
+# The spike is its own workspace root, so the product workspace never picks it up.
+[workspace]
+
+[dependencies]
+# Slint, Vello and wgpu move together: the wgpu bridge may change in any Slint minor.
+slint = { version = "~1.18.1", features = ["unstable-wgpu-30", "unstable-winit-030", "renderer-femtovg-wgpu"] }
+wgpu = "30.0.1"
+vello = "0.11.0"
+vello_cpu = { version = "0.3.0", features = ["multithreading"] }
+# complex-scripts: dictionary segmentation for Thai and CJK (Slint already links the data).
+parley = { version = "0.12.0", features = ["complex-scripts"] }
+kira = { version = "0.12.6", default-features = false, features = ["cpal"] }
+rand = "0.10.3"
+pollster = "0.4"
+png = "0.18"
+anyhow = "1"
+
+# Wayland presentation feedback (wp_presentation): real vsync counts and hardware
+# timestamps for the measurements. All three are already in the tree through winit.
+[target.'cfg(target_os = "linux")'.dependencies]
+wayland-client = "0.31.15"
+wayland-backend = { version = "0.3.17", features = ["client_system"] }
+wayland-protocols = { version = "0.32.13", features = ["client"] }
+libc = "0.2.191"
+
+[build-dependencies]
+slint-build = "~1.18.1"
+
+# Audio and animation are only representative with optimized dependencies.
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+debug = "line-tables-only"

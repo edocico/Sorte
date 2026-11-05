@@ -1,2 +1,5 @@
 # Cargo build output (the workspace and the throwaway spike/)
 target/
+
+# Font files for the spike, copied locally (OFL-1.1); see spike/README.md
+spike/fonts/
