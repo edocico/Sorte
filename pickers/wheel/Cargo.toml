@@ -1,0 +1,12 @@
+[package]
+name = "sorte-wheel"
+description = "The wheel picker: layout and the spin choreography that lands on the outcome."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+
+[lints]
+workspace = true

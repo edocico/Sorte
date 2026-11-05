@@ -1,0 +1,12 @@
+[package]
+name = "sorte-stage"
+description = "Renders Frame with Vello on wgpu, or with vello_cpu; motion blur; the debug overlay."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+
+[lints]
+workspace = true

@@ -1,0 +1,67 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "pickers/*"]
+# The M0 spike is throwaway and has its own workspace.
+exclude = ["spike"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "GPL-3.0-only"
+publish = false
+
+[workspace.dependencies]
+sorte-core = { path = "crates/sorte-core" }
+sorte-anim = { path = "crates/sorte-anim" }
+sorte-pickers = { path = "crates/sorte-pickers" }
+sorte-stage = { path = "crates/sorte-stage" }
+sorte-audio = { path = "crates/sorte-audio" }
+sorte-store = { path = "crates/sorte-store" }
+sorte-wheel = { path = "pickers/wheel" }
+
+# Slint, Vello and wgpu move as one unit: Slint's wgpu bridge may change in any minor
+# release, and Vello 0.11 needs wgpu 30. kurbo and peniko must stay the versions Vello uses.
+slint = { version = "~1.18.1", features = ["unstable-wgpu-30", "unstable-winit-030", "renderer-femtovg-wgpu"] }
+slint-build = "~1.18.1"
+wgpu = "30.0.1"
+vello = "0.11.0"
+vello_cpu = { version = "0.3.0", features = ["multithreading"] }
+kurbo = "0.13.1"
+peniko = "0.6.1"
+parley = { version = "0.12.0", features = ["complex-scripts"] }
+kira = { version = "0.12.6", default-features = false, features = ["cpal"] }
+
+rand = "0.10.3"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+uuid = { version = "1.29.0", features = ["v4", "serde"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde", "std"] }
+thiserror = "2.0.21"
+anyhow = "1"
+directories = "6.0.0"
+pollster = "0.4"
+
+proptest = "1.12.0"
+criterion = "0.8.2"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+# Audio and animation are only representative with optimized dependencies.
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+debug = "line-tables-only"
+
+# Tagged releases (CLAUDE.md: LTO release build).
+[profile.dist]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+debug = false

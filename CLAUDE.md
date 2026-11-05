@@ -26,16 +26,18 @@ Phases run M0 → M4; each closes only when its gate passes, measured with the d
 
 ## Commands
 
-No Cargo workspace exists yet; whoever scaffolds it replaces the code block below with the real commands. Planned: one workspace, Rust stable, edition 2024 (Slint 1.18.1 needs Rust ≥ 1.92); CI on GitHub Actions runs fmt, clippy, tests and a debug build on Linux, Windows and macOS for every push.
+One Cargo workspace: `crates/sorte-*` and `pickers/*`, Rust stable, edition 2024 (Slint 1.18.1 needs Rust ≥ 1.92); `spike/` is excluded and builds on its own. CI (`.github/workflows/ci.yml`) runs fmt, clippy with `-D warnings`, tests and a debug build on Linux, Windows and macOS for every push, and cargo-deny.
 
 ```bash
 cargo fmt --all --check
-cargo clippy --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings
 cargo build --workspace
 cargo test --workspace
 cargo test -p sorte-core <test_name>    # a single test
+cargo run -p sorte-app                  # the app (binary `sorte`)
 cargo bench                             # criterion
 cargo deny check                        # licences and known vulnerabilities
+cd spike && cargo run --release -- --gate 6   # the M0 gate measurement (see spike/README.md)
 ```
 
 - Environment: the Vello path needs a GPU with compute shaders and the spike opens a window, so measurements happen on the user's machines; cloud sandboxes have neither GPU nor display, though builds and headless tests run there. On Linux, cpal (Kira's audio backend) needs the ALSA development files (`libasound2-dev` on Debian/Ubuntu); the first build names any other missing -dev package.

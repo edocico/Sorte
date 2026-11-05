@@ -1,0 +1,12 @@
+[package]
+name = "sorte-audio"
+description = "Ticks and sounds scheduled ahead on Kira's audio clock."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+
+[lints]
+workspace = true

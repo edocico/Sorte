@@ -1,0 +1,3 @@
+# Long lines, compact small items (the style of the M0 spike).
+max_width = 120
+use_small_heuristics = "Max"
