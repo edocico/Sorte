@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc ccc6f82e9c0c3eeef1f1b47c2aab3717736f764688da5725d5e569979894877a # shrinks to list = ListDoc { schema: 1, id: ListId(00000000-0000-0000-0000-000000000000), title: "Anna Rossi", description: "Anna Rossi", result_titles: [], picker: "wheel", picker_settings: Object {}, settings: ListSettings { spin_duration_secs: 1, sounds: Sounds { start: Default, ticks: Default, end: Default } }, entries: [Entry { id: EntryId(00000000-0000-0000-0000-000000000000), text: "Anna Rossi", label: None, image: None, weight: 1, color: None, enabled: false, count: 0 }], history: [], created_at: 1970-01-01T00:00:00Z, updated_at: 1970-01-01T00:00:00Z }, copy = Entry { id: EntryId(00000000-0000-0000-0000-000000000000), text: "Anna Rossi", label: None, image: None, weight: 1, color: None, enabled: false, count: 0 }, original = Index(0), at = Index(0), seed = 0
