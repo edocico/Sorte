@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Sorte (provisional name) is an offline, native desktop app for Windows, macOS and Linux that draws a random entry from a list and stages the draw as a frame-by-frame animated "picker": a PickerWheel-style wheel first, then other pickers, starting with a horse race (M3). It is open source under GPLv3 (`LICENSE`).
 
-This file was written before any code existed. The spec is `docs/design.md`, in Italian: a snapshot of the living design doc linked at its top, re-exported after the review of 2026-11-05. `§` below cites its section headings. This file keeps the rules that are easy to break and the points still open.
+This file was written before any code existed; the next step is the M0 spike. The spec is `docs/design.md`, in Italian: a snapshot of the living design doc linked at its top, re-exported after the review of 2026-11-05. `§` below cites its section headings. This file keeps the rules that are easy to break and the points still open; `docs/api-notes.md` holds the verified API details of the pinned crates.
 
 ## Roadmap
 
@@ -22,7 +22,7 @@ Phases run M0 → M4; each closes only when its gate passes, measured with the d
 
 - The spike is a throwaway binary in `spike/`, outside the product crates: once it passes, port only what is needed into the real crates.
 - If M0 misses its gate, the fallback already chosen is a scene built from Slint elements, with no wgpu bridge; the drawing contract (`Frame`) is then redesigned before M1. It is not the Vello CPU renderer (see Invariants).
-- Gates are judged on real hardware with the manual checklist (§ Testing e verifica), which a headless session can't run: report your measurements and leave pass or fail, and any switch to the fallback, to the user.
+- Gates are judged by the user on real hardware with the manual checklist (§ Testing e verifica): report your measurements and leave pass or fail, and any switch to the fallback, to the user.
 
 ## Commands
 
@@ -38,6 +38,7 @@ cargo bench                             # criterion
 cargo deny check                        # licences and known vulnerabilities
 ```
 
+- Environment: the Vello path needs a GPU with compute shaders and the spike opens a window, so measurements happen on the user's machines; cloud sandboxes have neither GPU nor display, though builds and headless tests run there. On Linux, cpal (Kira's audio backend) needs the ALSA development files (`libasound2-dev` on Debian/Ubuntu); the first build names any other missing -dev package.
 - Keep dependencies optimized in the dev profile (`[profile.dev.package."*"] opt-level = 3`): otherwise audio and animation in debug builds aren't representative.
 - Pin Slint, Vello and wgpu in `[workspace.dependencies]`, so they are bumped in one place.
 - On tags: LTO release build, packaging with cargo-packager, signing and publication (§ Build, packaging e distribuzione). cargo-about generates the third-party licence list for the About window.
@@ -109,7 +110,7 @@ UI (§ Esperienza utente)
 
 ## Verified API notes
 
-Checked on 2026-11-05 against the sources of slint 1.18.1, vello 0.11.0, vello_cpu 0.3.0, rand 0.10.3 and kira 0.12.6.
+Checked on 2026-11-05 against the sources of slint 1.18.1, vello 0.11.0, vello_cpu 0.3.0, rand 0.10.3 and kira 0.12.6; signatures and evidence are in `docs/api-notes.md`.
 - rand 0.10: `gen_range` is now `random_range` on `rand::RngExt` and is slightly biased on integers, so the draw uses `Uniform::new(0, w)?` with `.sample(&mut rng)` (or rand's `unbiased` feature). The OS generator is `rand::rngs::SysRng` (formerly `OsRng`) and is fallible: wrap it in `rand::rand_core::UnwrapErr` (which panics if the OS source fails) or handle its errors. Seeded tests use a named portable PRNG (`ChaCha8Rng` with the `chacha` feature, or `Xoshiro256PlusPlus`); `StdRng` and `SmallRng` may change between releases.
 - Slint renders with wgpu only when selected with `BackendSelector::new().require_wgpu_30(config).select()`. The default `WGPUSettings` requests `Limits::downlevel_webgl2_defaults()`, whose compute and storage limits are zero, which is why `sorte-stage` creates the device with the limits Vello needs (the WebGPU defaults it targets, `wgpu::Limits::default()`) and `sorte-app` passes it with `WGPUConfiguration::Manual` (confirm in M0).
 - `select()` fails at startup when no GPU-backed adapter is found: Slint skips GL by default, so a GL-only GPU counts as none, like a VM with only a CPU adapter; `SLINT_WGPU_CPU` lifts the CPU-adapter check. The no-GPU fallback must catch that error, not only a device without compute, and CI that opens the Slint window on a software adapter may need the variable.
